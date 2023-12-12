@@ -19,11 +19,11 @@ Open Raycast, run Import Extension and select the `snap-jot` folder.
 The directory where your notes are stored.
 
 #### Format
-The format of the note file name. For example, if you use `YYYY-MM-DD` , the note file name like as `2021-10-10.md`.
+The format of the note file name. For example, if you set `YYYY-MM-DD.md` , the note file name like as `2021-10-10.md`.
 
 #### Prefix
 The prefix of the note.
-For example, if you use `- HH:mm ` , the note like as  `- 12:10 somothing`.
+For example, if you set `- HH:mm ` , the note like as  `- 12:10 somothing`.
 
 #### Template
 If the file does not exist, create a file based on the template and append it there.
