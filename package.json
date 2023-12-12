@@ -27,7 +27,8 @@
           "title": "File name format",
           "required": true,
           "description": "ex) YYYY-MM-DD.md -> 2023-12-11.md",
-          "defaultValue": "YYYY-MM-DD.md"
+          "defaultValue": "YYYY-MM-DD.md",
+          "placeholder": "YYYY-MM-DD.md"
         },
         {
           "type": "textfield",
@@ -35,7 +36,8 @@
           "title": "Memo prefix",
           "required": true,
           "description": "ex) - HH:mm  -> - 12:34 My first memo",
-          "defaultValue": "- HH:mm "
+          "defaultValue": "- HH:mm ",
+          "placeholder": "- HH:mm"
         },
         {
           "type": "file",
