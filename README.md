@@ -1,6 +1,14 @@
-# SnapJot
+<br>
+<br>
+<p align="center">
+<img src="https://github.com/k41531/snap-jot/blob/main/assets/command-icon.png?raw=true" width="140" height="140" align="center" />
+</p>
 
+<h1 align="center">SnapJot</sup></h1>
+
+<p align="center">
 This is a Raycast Extension. It allows you to quickly write a new note in your specified files.
+</p>
 
 ## Usage
 This extension has not been published yet. To use it, you will need to clone this repository and import it into Raycast.
