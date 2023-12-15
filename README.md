@@ -18,6 +18,7 @@ This extension has not been published yet. To use it, you will need to clone thi
 git clone https://github.com/k41531/snap-jot
 cd snap-jot
 npm install
+npm run build
 ```
 Open Raycast, run Import Extension and select the `snap-jot` folder.
 
