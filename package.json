@@ -9,8 +9,10 @@
   "commands": [
     {
       "name": "memo",
-      "title": "SnapJot",
-      "description": "Create a note with a timestamp",
+      "title": "Jot Down",
+      "subtitle": "Create a memo with a timestamp",
+      "description": "Create a memo with a timestamp",
+      "category": ["Productivity","Documentation"],
       "mode": "view",
       "preferences": [
         {
