@@ -1,4 +1,4 @@
-import { Form, ActionPanel, Action, getPreferenceValues, openExtensionPreferences } from "@raycast/api";
+import { Form, ActionPanel, Action, getPreferenceValues, openExtensionPreferences, LaunchProps } from "@raycast/api";
 import { useForm } from "@raycast/utils";
 
 interface Memo {
@@ -31,9 +31,10 @@ function replaceDatePlaceholders(date: Date, text: string): string {
 }
 
 
-export default function Command() {
+export default function Command(props: LaunchProps<{ draftValues: Memo }>) {
     const preferences = getPreferenceValues<Preferences>();
     const { directory, format, prefix, template } = preferences;
+    const { draftValues } = props;
 
     function saveMemo(values: Memo) {
         const fs = require('fs');
@@ -65,7 +66,7 @@ export default function Command() {
                     <Action title="Open Extension Preferences" onAction={openExtensionPreferences} />
                 </ActionPanel>
             }>
-            <Form.TextArea title="Memo" {...itemProps.memo} />
+            <Form.TextArea title="Memo" {...itemProps.memo} defaultValue={draftValues?.memo} />
         </Form>
     )
 }
