@@ -1,4 +1,14 @@
-import { Form, ActionPanel, Action, getPreferenceValues, openExtensionPreferences, LaunchProps, popToRoot, Toast, showToast } from "@raycast/api";
+import {
+  Form,
+  ActionPanel,
+  Action,
+  getPreferenceValues,
+  openExtensionPreferences,
+  LaunchProps,
+  popToRoot,
+  Toast,
+  showToast,
+} from "@raycast/api";
 import { useForm } from "@raycast/utils";
 import fs from "fs";
 import path from "path";
@@ -15,12 +25,11 @@ interface Preferences {
   template: string;
 }
 
-
 function formatDateTime(date: Date, format: string, is12: boolean = false) {
   const hours = date.getHours();
   const isAM = hours < 12 || hours === 24;
   const ampm = isAM ? "AM" : "PM";
-  const hours12 = ((hours % 12) || 12).toString().padStart(2, "0");
+  const hours12 = (hours % 12 || 12).toString().padStart(2, "0");
 
   const tokens: { [key: string]: string } = {
     YYYY: date.getFullYear().toString(),
@@ -33,7 +42,10 @@ function formatDateTime(date: Date, format: string, is12: boolean = false) {
     A: is12 ? ampm : "",
   };
 
-  console.log("prefix", format.replace(/YYYY|YY|MM|DD|HH|mm|ss|A/g, (match) => tokens[match]));
+  console.log(
+    "prefix",
+    format.replace(/YYYY|YY|MM|DD|HH|mm|ss|A/g, (match) => tokens[match]),
+  );
   return format.replace(/YYYY|YY|MM|DD|HH|mm|ss|A/g, (match) => tokens[match]);
 }
 
@@ -56,14 +68,14 @@ export default function Command(props: LaunchProps<{ draftValues: Memo }>) {
       // if file is not exist, create file and write memo.
       if (!fs.existsSync(filePath)) {
         // if template is empyt, content is empty.
-        const templateContent = !!!template ? "" : fs.readFileSync(template, "utf8");
+        const templateContent = !template ? "" : fs.readFileSync(template, "utf8");
         memoContent = replaceDatePlaceholders(new Date(), templateContent) + "\n" + memo;
       }
       fs.appendFileSync(filePath, memoContent);
       const successOptions: Toast.Options = {
         style: Toast.Style.Success,
         title: "Memo Saved",
-        message: memo
+        message: memo,
       };
       showToast(successOptions);
     } catch (error) {
