@@ -87,7 +87,7 @@
     {
       "name": "searchText",
       "title": "Search Text",
-      "description": "Search text from notes.",
+      "description": "Search for specific text within your SnapJot notes.",
       "mode": "view"
     }
   ],
