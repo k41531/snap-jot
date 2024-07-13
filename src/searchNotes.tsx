@@ -75,7 +75,7 @@ function ShowNote(props: ShowNoteProps) {
 
   return (
     <List searchBarPlaceholder="Search Memos" onSearchTextChange={setSearchText} throttle={true}>
-      {filteredBulletPoints.map((point, index) => (
+      {filteredBulletPoints.map((point) => (
         <List.Item
           key={point}
           title={point.replace("- ", "")}

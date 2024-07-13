@@ -48,23 +48,25 @@ export default function Command() {
     readFiles();
   }, [folderPath]);
 
-  const matchedLines: MatchedLine[] = files.flatMap((file) => {
-    return file.content.split("\n").reduce((acc: MatchedLine[], line, index) => {
-      if (line.startsWith("- ") && line.toLowerCase().includes(searchText.toLowerCase())) {
-        acc.push({
-          fileName: file.name,
-          filePath: file.path,
-          line: line,
-          lineNumber: index + 1,
-        });
-      }
-      return acc;
-    }, []);
-  }).reverse();
+  const matchedLines: MatchedLine[] = files
+    .flatMap((file) => {
+      return file.content.split("\n").reduce((acc: MatchedLine[], line, index) => {
+        if (line.startsWith("- ") && line.toLowerCase().includes(searchText.toLowerCase())) {
+          acc.push({
+            fileName: file.name,
+            filePath: file.path,
+            line: line,
+            lineNumber: index + 1,
+          });
+        }
+        return acc;
+      }, []);
+    })
+    .reverse();
 
   return (
     <List searchBarPlaceholder="Search Memos" onSearchTextChange={setSearchText} throttle={true}>
-      {matchedLines.map((matchedLine, index) => (
+      {matchedLines.map((matchedLine) => (
         <List.Item
           key={`${matchedLine.filePath}-${matchedLine.lineNumber}`}
           title={matchedLine.fileName}
@@ -75,7 +77,7 @@ export default function Command() {
                 title="Show Details"
                 icon={Icon.Circle}
                 target={
-                  <Detail 
+                  <Detail
                     markdown={getFullHighlightedContent(matchedLine, searchText)}
                     metadata={
                       <Detail.Metadata>
@@ -85,14 +87,13 @@ export default function Command() {
                       </Detail.Metadata>
                     }
                     actions={
-                        <ActionPanel>
-                            <Action.Open title="Open File" target={matchedLine.filePath} />
-                        </ActionPanel>
-                        }
+                      <ActionPanel>
+                        <Action.Open title="Open File" target={matchedLine.filePath} />
+                      </ActionPanel>
+                    }
                   />
                 }
               />
-              
             </ActionPanel>
           }
         />
@@ -103,15 +104,15 @@ export default function Command() {
 
 function getHighlightedContent(content: string, searchText: string): string {
   if (!searchText) return content;
-  const regex = new RegExp(`(${searchText})`, 'gi');
-  return content.replace(regex, '$1');
+  const regex = new RegExp(`(${searchText})`, "gi");
+  return content.replace(regex, "$1");
 }
 
 function getFullHighlightedContent(matchedLine: MatchedLine, searchText: string): string {
   const fileContent = fs.readFileSync(matchedLine.filePath, "utf-8");
   const lines = fileContent.split("\n");
   const relevantLines = lines.slice(matchedLine.lineNumber - 1);
-  
+
   const highlightedLines = relevantLines.map((line, index) => {
     if (index === 0) {
       return getHighlightedContent(line, searchText);
@@ -119,5 +120,5 @@ function getFullHighlightedContent(matchedLine: MatchedLine, searchText: string)
     return line;
   });
 
-  return highlightedLines.join('\n');
+  return highlightedLines.join("\n");
 }
