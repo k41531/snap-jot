@@ -53,7 +53,7 @@ export default function Command() {
       setFiles((prevFiles) => [...prevFiles, ...validResults]);
 
       // Return the array of valid results
-      return validResults;
+      return validResults.reverse();
     },
     [folderPath],
   );
@@ -64,7 +64,7 @@ export default function Command() {
     const readFiles = async () => {
       try {
         setIsLoading(true);
-        const fileNames = fs.readdirSync(folderPath);
+        const fileNames = fs.readdirSync(folderPath).reverse();
 
         let allFiles: FileContent[] = [];
 
