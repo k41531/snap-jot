@@ -20,7 +20,6 @@ interface MatchedLine {
   lineNumber: number;
 }
 
-
 const BATCH_SIZE = 50;
 const LOAD_DELAY = 100;
 const MAX_FILES = 10;
@@ -31,59 +30,55 @@ export default function Command() {
   const [files, setFiles] = useState<FileContent[]>([]);
   const [searchText, setSearchText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({ totalFiles: 0, processedFiles: 0, elapsedTime: 0 });
   const hasRunEffect = useRef(false);
 
-  const processBatch = useCallback(async (fileNames: string[], startIndex: number) => {
-    const batch = fileNames.slice(startIndex, startIndex + BATCH_SIZE);
-    const batchResults = await Promise.all(
-      batch.map(async (fileName) => {
-        const filePath = path.join(folderPath, fileName);
-        const stats = fs.lstatSync(filePath);
-  
-        if (stats.isDirectory() || stats.isSymbolicLink()) {
-          return null;
-        }
-  
-        const content = await fs.promises.readFile(filePath, "utf-8");
-        return { name: fileName, path: filePath, content };
-      })
-    );
-  
-    const validResults = batchResults.filter((file): file is FileContent => file !== null);
-    setFiles(prevFiles => [...prevFiles, ...validResults]);
-    setStats(prev => ({
-      ...prev,
-      processedFiles: prev.processedFiles + batch.length,
-      elapsedTime: Date.now() - prev.elapsedTime
-    }));
-  
-    // Return the array of valid results
-    return validResults;
-  }, [folderPath]);
-  
+  const processBatch = useCallback(
+    async (fileNames: string[], startIndex: number) => {
+      const batch = fileNames.slice(startIndex, startIndex + BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (fileName) => {
+          const filePath = path.join(folderPath, fileName);
+          const stats = fs.lstatSync(filePath);
+
+          if (stats.isDirectory() || stats.isSymbolicLink()) {
+            return null;
+          }
+
+          const content = await fs.promises.readFile(filePath, "utf-8");
+          return { name: fileName, path: filePath, content };
+        }),
+      );
+
+      const validResults = batchResults.filter((file): file is FileContent => file !== null);
+      setFiles((prevFiles) => [...prevFiles, ...validResults]);
+
+      // Return the array of valid results
+      return validResults;
+    },
+    [folderPath],
+  );
 
   useEffect(() => {
     if (hasRunEffect.current) return;
-    console.log(`Reading files from ${folderPath}`); 
+    console.log(`Reading files from ${folderPath}`);
     const readFiles = async () => {
       const startTime = Date.now();
       try {
         setIsLoading(true);
         const fileNames = fs.readdirSync(folderPath);
         setStats({ totalFiles: fileNames.length, processedFiles: 0, elapsedTime: startTime });
-  
+
         let allFiles: FileContent[] = [];
-  
+
         for (let i = 0; i < Math.min(fileNames.length, MAX_FILES); i += BATCH_SIZE) {
           const batchResults = await processBatch(fileNames, i);
           allFiles = [...allFiles, ...batchResults]; // Collect the array of batch results
-          await new Promise(resolve => setTimeout(resolve, LOAD_DELAY));
+          await new Promise((resolve) => setTimeout(resolve, LOAD_DELAY));
           console.log(`Processed ${i + BATCH_SIZE} files`);
         }
-  
+
         setFiles(allFiles); // Set state once after processing all batches
-        
+
         setIsLoading(false);
       } catch (error) {
         showToast({
@@ -94,11 +89,10 @@ export default function Command() {
         setIsLoading(false);
       }
     };
-  
+
     readFiles();
     hasRunEffect.current = true;
   }, [folderPath, processBatch]);
-  
 
   const matchedLines: MatchedLine[] = files
     .flatMap((file) => {
@@ -117,46 +111,39 @@ export default function Command() {
     .reverse();
 
   return (
-    <List
-      isLoading={isLoading}
-      searchBarPlaceholder="Search Memos"
-      onSearchTextChange={setSearchText}
-      throttle={true}
-    >
-     {
-        matchedLines.map((matchedLine) => (
-          <List.Item
-            key={`${matchedLine.filePath}-${matchedLine.lineNumber}`}
-            title={matchedLine.fileName}
-            subtitle={getHighlightedContent(matchedLine.line, searchText)}
-            actions={
-              <ActionPanel>
-                <Action.Push
-                  title="Show Details"
-                  icon={Icon.Circle}
-                  target={
-                    <Detail
-                      markdown={getFullHighlightedContent(matchedLine, searchText)}
-                      metadata={
-                        <Detail.Metadata>
-                          <Detail.Metadata.Label title="File" text={matchedLine.fileName} />
-                          <Detail.Metadata.Separator />
-                          <Detail.Metadata.Label title="Path" text={matchedLine.filePath} />
-                        </Detail.Metadata>
-                      }
-                      actions={
-                        <ActionPanel>
-                          <Action.Open title="Open File" target={matchedLine.filePath} />
-                        </ActionPanel>
-                      }
-                    />
-                  }
-                />
-              </ActionPanel>
-            }
-          />
-        ))
-      }
+    <List isLoading={isLoading} searchBarPlaceholder="Search Memos" onSearchTextChange={setSearchText} throttle={true}>
+      {matchedLines.map((matchedLine) => (
+        <List.Item
+          key={`${matchedLine.filePath}-${matchedLine.lineNumber}`}
+          title={matchedLine.fileName}
+          subtitle={getHighlightedContent(matchedLine.line, searchText)}
+          actions={
+            <ActionPanel>
+              <Action.Push
+                title="Show Details"
+                icon={Icon.Circle}
+                target={
+                  <Detail
+                    markdown={getFullHighlightedContent(matchedLine, searchText)}
+                    metadata={
+                      <Detail.Metadata>
+                        <Detail.Metadata.Label title="File" text={matchedLine.fileName} />
+                        <Detail.Metadata.Separator />
+                        <Detail.Metadata.Label title="Path" text={matchedLine.filePath} />
+                      </Detail.Metadata>
+                    }
+                    actions={
+                      <ActionPanel>
+                        <Action.Open title="Open File" target={matchedLine.filePath} />
+                      </ActionPanel>
+                    }
+                  />
+                }
+              />
+            </ActionPanel>
+          }
+        />
+      ))}
     </List>
   );
 }
