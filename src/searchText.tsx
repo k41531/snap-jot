@@ -62,11 +62,9 @@ export default function Command() {
     if (hasRunEffect.current) return;
     console.log(`Reading files from ${folderPath}`);
     const readFiles = async () => {
-      const startTime = Date.now();
       try {
         setIsLoading(true);
         const fileNames = fs.readdirSync(folderPath);
-        setStats({ totalFiles: fileNames.length, processedFiles: 0, elapsedTime: startTime });
 
         let allFiles: FileContent[] = [];
 
