@@ -20,42 +20,60 @@ interface MatchedLine {
   lineNumber: number;
 }
 
+
 export default function Command() {
   const preferences = getPreferenceValues<Preferences>();
   const folderPath = preferences.directory;
   const [files, setFiles] = useState<FileContent[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({ totalFiles: 0, processedFiles: 0, elapsedTime: 0 });
+
   useEffect(() => {
-    const readFiles = () => {
+    const readFiles = async () => {
+      const startTime = Date.now();
       try {
+        setIsLoading(true);
         const fileNames = fs.readdirSync(folderPath);
-        const fileContents = fileNames
-          .map((fileName) => {
+        setStats(prev => ({ ...prev, totalFiles: fileNames.length }));
+        const batchSize = 10;
+        const processedFiles: FileContent[] = [];
+
+        for (let i = 0; i < fileNames.length; i += batchSize) {
+          const batch = fileNames.slice(i, i + batchSize);
+          const batchPromises = batch.map(async (fileName) => {
             const filePath = path.join(folderPath, fileName);
+            const stats = fs.lstatSync(filePath);
 
-            // Check if the file is a directory
-            if (fs.lstatSync(filePath).isDirectory()) {
-              return null;
-            }
-            // シンボリックリンクの場合は無視
-            if (fs.lstatSync(filePath).isSymbolicLink()) {
+            if (stats.isDirectory() || stats.isSymbolicLink()) {
               return null;
             }
 
-            const content = fs.readFileSync(filePath, "utf-8");
+            const content = await fs.promises.readFile(filePath, "utf-8");
             return { name: fileName, path: filePath, content };
-          })
-          .filter((file): file is { name: string; path: string; content: string } => file !== null); // Type guard to exclude null
+          });
 
-        setFiles(fileContents);
+          const batchResults = await Promise.all(batchPromises);
+          processedFiles.push(...batchResults.filter((file): file is FileContent => file !== null));
+          setFiles(prevFiles => [...prevFiles, ...processedFiles]);
+          setStats(prev => ({
+            ...prev,
+            processedFiles: prev.processedFiles + batchResults.length,
+            elapsedTime: Date.now() - startTime
+          }));
+        }
+
+        setIsLoading(false);
       } catch (error) {
         showToast({
           style: Toast.Style.Failure,
           title: "Failed to read directory",
           message: (error as Error).message,
         });
+        setIsLoading(false);
       }
     };
+
     readFiles();
   }, [folderPath]);
 
@@ -76,8 +94,19 @@ export default function Command() {
     .reverse();
 
   return (
-    <List searchBarPlaceholder="Search Memos" onSearchTextChange={setSearchText} throttle={true}>
-      {matchedLines.map((matchedLine) => (
+    <List
+    isLoading={isLoading}
+    searchBarPlaceholder="Search Memos"
+    onSearchTextChange={setSearchText}
+    throttle={true}
+  >
+    {isLoading ? (
+      <List.Item
+        title={`Processing files: ${stats.processedFiles}/${stats.totalFiles}`}
+        subtitle={`Elapsed time: ${stats.elapsedTime / 1000}s`}
+      />
+    ) : (
+      matchedLines.map((matchedLine) => (
         <List.Item
           key={`${matchedLine.filePath}-${matchedLine.lineNumber}`}
           title={matchedLine.fileName}
@@ -108,8 +137,9 @@ export default function Command() {
             </ActionPanel>
           }
         />
-      ))}
-    </List>
+      ))
+    )}
+  </List>
   );
 }
 
