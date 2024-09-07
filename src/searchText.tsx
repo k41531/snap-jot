@@ -22,7 +22,8 @@ interface MatchedLine {
 
 
 const BATCH_SIZE = 50;
-const LOAD_DELAY = 100; // ms
+const LOAD_DELAY = 100;
+const MAX_FILES = 10;
 
 export default function Command() {
   const preferences = getPreferenceValues<Preferences>();
@@ -74,7 +75,7 @@ export default function Command() {
   
         let allFiles: FileContent[] = [];
   
-        for (let i = 0; i < fileNames.length; i += BATCH_SIZE) {
+        for (let i = 0; i < Math.min(fileNames.length, MAX_FILES); i += BATCH_SIZE) {
           const batchResults = await processBatch(fileNames, i);
           allFiles = [...allFiles, ...batchResults]; // Collect the array of batch results
           await new Promise(resolve => setTimeout(resolve, LOAD_DELAY));
@@ -122,11 +123,7 @@ export default function Command() {
       onSearchTextChange={setSearchText}
       throttle={true}
     >
-      {isLoading ? (
-        <List.Item
-          title={`Processing files: ${stats.processedFiles}/${stats.totalFiles}`}
-        />
-      ) : (
+     {
         matchedLines.map((matchedLine) => (
           <List.Item
             key={`${matchedLine.filePath}-${matchedLine.lineNumber}`}
@@ -159,7 +156,7 @@ export default function Command() {
             }
           />
         ))
-      )}
+      }
     </List>
   );
 }
