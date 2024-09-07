@@ -1,7 +1,7 @@
 import { List, ActionPanel, Action, getPreferenceValues, Detail, Icon, showToast, Toast } from "@raycast/api";
 import fs from "node:fs";
 import path from "node:path";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface Preferences {
   directory: string;
@@ -21,6 +21,9 @@ interface MatchedLine {
 }
 
 
+const BATCH_SIZE = 50;
+const LOAD_DELAY = 100; // ms
+
 export default function Command() {
   const preferences = getPreferenceValues<Preferences>();
   const folderPath = preferences.directory;
@@ -28,41 +31,58 @@ export default function Command() {
   const [searchText, setSearchText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({ totalFiles: 0, processedFiles: 0, elapsedTime: 0 });
+  const hasRunEffect = useRef(false);
+
+  const processBatch = useCallback(async (fileNames: string[], startIndex: number) => {
+    const batch = fileNames.slice(startIndex, startIndex + BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map(async (fileName) => {
+        const filePath = path.join(folderPath, fileName);
+        const stats = fs.lstatSync(filePath);
+  
+        if (stats.isDirectory() || stats.isSymbolicLink()) {
+          return null;
+        }
+  
+        const content = await fs.promises.readFile(filePath, "utf-8");
+        return { name: fileName, path: filePath, content };
+      })
+    );
+  
+    const validResults = batchResults.filter((file): file is FileContent => file !== null);
+    setFiles(prevFiles => [...prevFiles, ...validResults]);
+    setStats(prev => ({
+      ...prev,
+      processedFiles: prev.processedFiles + batch.length,
+      elapsedTime: Date.now() - prev.elapsedTime
+    }));
+  
+    // Return the array of valid results
+    return validResults;
+  }, [folderPath]);
+  
 
   useEffect(() => {
+    if (hasRunEffect.current) return;
+    console.log(`Reading files from ${folderPath}`); 
     const readFiles = async () => {
       const startTime = Date.now();
       try {
         setIsLoading(true);
         const fileNames = fs.readdirSync(folderPath);
-        setStats(prev => ({ ...prev, totalFiles: fileNames.length }));
-        const batchSize = 10;
-        const processedFiles: FileContent[] = [];
-
-        for (let i = 0; i < fileNames.length; i += batchSize) {
-          const batch = fileNames.slice(i, i + batchSize);
-          const batchPromises = batch.map(async (fileName) => {
-            const filePath = path.join(folderPath, fileName);
-            const stats = fs.lstatSync(filePath);
-
-            if (stats.isDirectory() || stats.isSymbolicLink()) {
-              return null;
-            }
-
-            const content = await fs.promises.readFile(filePath, "utf-8");
-            return { name: fileName, path: filePath, content };
-          });
-
-          const batchResults = await Promise.all(batchPromises);
-          processedFiles.push(...batchResults.filter((file): file is FileContent => file !== null));
-          setFiles(prevFiles => [...prevFiles, ...processedFiles]);
-          setStats(prev => ({
-            ...prev,
-            processedFiles: prev.processedFiles + batchResults.length,
-            elapsedTime: Date.now() - startTime
-          }));
+        setStats({ totalFiles: fileNames.length, processedFiles: 0, elapsedTime: startTime });
+  
+        let allFiles: FileContent[] = [];
+  
+        for (let i = 0; i < fileNames.length; i += BATCH_SIZE) {
+          const batchResults = await processBatch(fileNames, i);
+          allFiles = [...allFiles, ...batchResults]; // Collect the array of batch results
+          await new Promise(resolve => setTimeout(resolve, LOAD_DELAY));
+          console.log(`Processed ${i + BATCH_SIZE} files`);
         }
-
+  
+        setFiles(allFiles); // Set state once after processing all batches
+        
         setIsLoading(false);
       } catch (error) {
         showToast({
@@ -73,9 +93,11 @@ export default function Command() {
         setIsLoading(false);
       }
     };
-
+  
     readFiles();
-  }, [folderPath]);
+    hasRunEffect.current = true;
+  }, [folderPath, processBatch]);
+  
 
   const matchedLines: MatchedLine[] = files
     .flatMap((file) => {
@@ -95,51 +117,50 @@ export default function Command() {
 
   return (
     <List
-    isLoading={isLoading}
-    searchBarPlaceholder="Search Memos"
-    onSearchTextChange={setSearchText}
-    throttle={true}
-  >
-    {isLoading ? (
-      <List.Item
-        title={`Processing files: ${stats.processedFiles}/${stats.totalFiles}`}
-        subtitle={`Elapsed time: ${stats.elapsedTime / 1000}s`}
-      />
-    ) : (
-      matchedLines.map((matchedLine) => (
+      isLoading={isLoading}
+      searchBarPlaceholder="Search Memos"
+      onSearchTextChange={setSearchText}
+      throttle={true}
+    >
+      {isLoading ? (
         <List.Item
-          key={`${matchedLine.filePath}-${matchedLine.lineNumber}`}
-          title={matchedLine.fileName}
-          subtitle={getHighlightedContent(matchedLine.line, searchText)}
-          actions={
-            <ActionPanel>
-              <Action.Push
-                title="Show Details"
-                icon={Icon.Circle}
-                target={
-                  <Detail
-                    markdown={getFullHighlightedContent(matchedLine, searchText)}
-                    metadata={
-                      <Detail.Metadata>
-                        <Detail.Metadata.Label title="File" text={matchedLine.fileName} />
-                        <Detail.Metadata.Separator />
-                        <Detail.Metadata.Label title="Path" text={matchedLine.filePath} />
-                      </Detail.Metadata>
-                    }
-                    actions={
-                      <ActionPanel>
-                        <Action.Open title="Open File" target={matchedLine.filePath} />
-                      </ActionPanel>
-                    }
-                  />
-                }
-              />
-            </ActionPanel>
-          }
+          title={`Processing files: ${stats.processedFiles}/${stats.totalFiles}`}
         />
-      ))
-    )}
-  </List>
+      ) : (
+        matchedLines.map((matchedLine) => (
+          <List.Item
+            key={`${matchedLine.filePath}-${matchedLine.lineNumber}`}
+            title={matchedLine.fileName}
+            subtitle={getHighlightedContent(matchedLine.line, searchText)}
+            actions={
+              <ActionPanel>
+                <Action.Push
+                  title="Show Details"
+                  icon={Icon.Circle}
+                  target={
+                    <Detail
+                      markdown={getFullHighlightedContent(matchedLine, searchText)}
+                      metadata={
+                        <Detail.Metadata>
+                          <Detail.Metadata.Label title="File" text={matchedLine.fileName} />
+                          <Detail.Metadata.Separator />
+                          <Detail.Metadata.Label title="Path" text={matchedLine.filePath} />
+                        </Detail.Metadata>
+                      }
+                      actions={
+                        <ActionPanel>
+                          <Action.Open title="Open File" target={matchedLine.filePath} />
+                        </ActionPanel>
+                      }
+                    />
+                  }
+                />
+              </ActionPanel>
+            }
+          />
+        ))
+      )}
+    </List>
   );
 }
 
